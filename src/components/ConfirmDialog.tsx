@@ -8,6 +8,15 @@ import {
   Typography
 } from '@mui/material'
 
+export interface ConfirmDialogProps {
+  open: boolean
+  title: React.ReactNode
+  description: React.ReactNode
+  confirmText?: string
+  onClose: () => void
+  onConfirm: () => void | Promise<void>
+}
+
 export default function ConfirmDialog({
   open,
   title,
@@ -15,7 +24,7 @@ export default function ConfirmDialog({
   confirmText = 'Подтвердить',
   onClose,
   onConfirm
-}) {
+}: ConfirmDialogProps) {
   const handleConfirm = async () => {
     await onConfirm()
     onClose()

@@ -1,14 +1,23 @@
 import React from 'react'
 import { Alert, Box, Button } from '@mui/material'
 
-export class ErrorBoundary extends React.Component {
-  state = {
+type ErrorBoundaryState = {
+  hasError: boolean
+  error: Error | null
+}
+
+export class ErrorBoundary extends React.Component<
+  React.PropsWithChildren<{}>,
+  ErrorBoundaryState
+> {
+  state: ErrorBoundaryState = {
     hasError: false,
     error: null
   }
 
-  static getDerivedStateFromError(error) {
-    return { hasError: true, error }
+  static getDerivedStateFromError(error: unknown): ErrorBoundaryState {
+    const err = error instanceof Error ? error : new Error(String(error))
+    return { hasError: true, error: err }
   }
 
   render() {

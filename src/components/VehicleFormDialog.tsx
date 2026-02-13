@@ -55,6 +55,8 @@ type VehicleFormDialogProps =
 export default function VehicleFormDialog(props: VehicleFormDialogProps) {
   const { mode, open, onClose } = props
   const isEdit = mode === 'edit'
+  const initial = isEdit ? initial : undefined
+
 
   const [showCoords, setShowCoords] = useState(false)
 
@@ -73,8 +75,8 @@ export default function VehicleFormDialog(props: VehicleFormDialogProps) {
 
     if (isEdit) {
       reset({
-        name: props.initial.name,
-        price: props.initial.price
+        name: initial.name,
+        price: initial.price
       })
       setShowCoords(false)
     } else {
@@ -88,7 +90,7 @@ export default function VehicleFormDialog(props: VehicleFormDialogProps) {
         longitude: undefined
       })
     }
-  }, [open, isEdit, props.initial, reset])
+  }, [open, isEdit, initial, reset])
 
   const onSubmit = async (data: FormValues) => {
     if (isEdit) {

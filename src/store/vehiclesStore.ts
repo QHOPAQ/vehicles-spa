@@ -17,53 +17,103 @@ import { getErrorMessage } from '../api/client'
 
 type Status = 'idle' | 'loading' | 'error'
 
+export type ToastSeverity = 'success' | 'warning' | 'error' | 'info'
+
+export interface Toast {
+  id: string
+  severity: ToastSeverity
+  message: string
+}
+
+interface Patches {
+  created: Vehicle[]
+  updated: Record<number, Partial<Vehicle>>
+  deleted: number[]
+}
+
+export interface VehiclesStoreState {
+  vehicles: Vehicle[]
+  status: Status
+  error: string | null
+
+  sort: SortState
+  filter: FilterState
+  paging: { page: number; rowsPerPage: number }
+
+  toasts: Toast[]
+  pushToast: (severity: ToastSeverity, message: string) => void
+  popToast: (id: string) => void
+
+  patches: Patches
+  lastId: number
+
+  load: () => Promise<void>
+  setSort: (sort: SortState) => void
+  setFilter: (patch: Partial<FilterState>) => void
+  setPaging: (patch: Partial<{ page: number; rowsPerPage: number }>) => void
+
+  create: (input: CreateVehicleInput) => Promise<void>
+  edit: (id: number, input: UpdateVehicleInput) => Promise<void>
+  remove: (id: number) => Promise<void>
+}
+
 const PATCHES_KEY = 'vehicles_patches_v1'
 
+const emptyPatches = (): Patches => ({ created: [], updated: {}, deleted: [] })
+
 // читаем локальные патчи из storage
-const readPatches = () => {
+const readPatches = (): Patches => {
   try {
     const raw = localStorage.getItem(PATCHES_KEY)
-    if (!raw) return { created: [], updated: {}, deleted: [] }
-    const parsed = JSON.parse(raw)
+    if (!raw) return emptyPatches()
+    const parsed: unknown = JSON.parse(raw)
+
+    // максимально безопасная валидация формы
+    if (!parsed || typeof parsed !== 'object') return emptyPatches()
+    const p = parsed as Partial<Patches>
+
     return {
-      created: Array.isArray(parsed.created) ? parsed.created : [],
-      updated: typeof parsed.updated === 'object' ? parsed.updated : {},
-      deleted: Array.isArray(parsed.deleted) ? parsed.deleted : []
+      created: Array.isArray(p.created) ? (p.created as Vehicle[]) : [],
+      updated:
+        p.updated && typeof p.updated === 'object'
+          ? (p.updated as Record<number, Partial<Vehicle>>)
+          : {},
+      deleted: Array.isArray(p.deleted) ? (p.deleted as number[]) : []
     }
   } catch {
-    return { created: [], updated: {}, deleted: [] }
+    return emptyPatches()
   }
 }
 
 // сохраняем патчи обратно
-const savePatches = (patches) => {
+const savePatches = (patches: Patches): void => {
   try {
     localStorage.setItem(PATCHES_KEY, JSON.stringify(patches))
   } catch {}
 }
 
 // нормализация чисел (API иногда присылает строки)
-const toNumber = (v) => {
+const toNumber = (v: unknown): number => {
   if (typeof v === 'number') return v
   if (typeof v === 'string') return Number(v)
   return NaN
 }
 
-const normalizeVehicle = (v) => ({
+const normalizeVehicle = (v: Vehicle): Vehicle => ({
   ...v,
   id: Number(v.id),
   year: Number(v.year) || 0,
   price: toNumber(v.price),
-  latitude: toNumber(v.latitude),
-  longitude: toNumber(v.longitude)
+  latitude: v.latitude === undefined ? undefined : toNumber(v.latitude),
+  longitude: v.longitude === undefined ? undefined : toNumber(v.longitude)
 })
 
-const normalizeVehicles = (list) =>
-  Array.isArray(list) ? list.map(normalizeVehicle) : []
+const normalizeVehicles = (list: unknown): Vehicle[] =>
+  Array.isArray(list) ? (list as Vehicle[]).map(normalizeVehicle) : []
 
 // применяем локальные изменения поверх серверных данных
-const applyLocalPatches = (serverList, patches) => {
-  const deleted = new Set(patches.deleted)
+const applyLocalPatches = (serverList: Vehicle[], patches: Patches): Vehicle[] => {
+  const deleted = new Set<number>(patches.deleted)
 
   let result = serverList
     .filter((v) => !deleted.has(v.id))
@@ -76,7 +126,7 @@ const applyLocalPatches = (serverList, patches) => {
   result = [...localCreated, ...result]
 
   // убираем возможные дубли по id
-  const seen = new Set()
+  const seen = new Set<number>()
   return result.filter((v) => {
     if (seen.has(v.id)) return false
     seen.add(v.id)
@@ -84,7 +134,7 @@ const applyLocalPatches = (serverList, patches) => {
   })
 }
 
-export const useVehiclesStore = create((set, get) => ({
+export const useVehiclesStore = create<VehiclesStoreState>((set, get) => ({
   vehicles: [],
   status: 'idle',
   error: null,
@@ -131,7 +181,7 @@ export const useVehiclesStore = create((set, get) => ({
       const msg = getErrorMessage(err)
 
       // моковые данные на случай, если API совсем мертв
-      const fallback = [
+      const fallback: Vehicle[] = [
         { id: 1, name: 'Toyota', model: 'Camry', year: 2021, color: 'red', price: 21000, latitude: 55.75, longitude: 37.62 },
         { id: 2, name: 'BMW', model: 'X5', year: 2019, color: 'black', price: 38000, latitude: 55.76, longitude: 37.61 },
         { id: 3, name: 'Tesla', model: 'Model 3', year: 2022, color: 'white', price: 45000, latitude: 55.75, longitude: 37.618 }
@@ -170,10 +220,10 @@ export const useVehiclesStore = create((set, get) => ({
       get().pushToast('success', 'Машина добавлена')
     } catch (err) {
       const id = get().lastId + 1
-      const localVehicle = { id, ...input }
+      const localVehicle: Vehicle = { id, ...(input as CreateVehicleInput) }
 
       const patches = get().patches
-      const nextPatches = {
+      const nextPatches: Patches = {
         ...patches,
         created: [localVehicle, ...patches.created]
       }
@@ -203,7 +253,7 @@ export const useVehiclesStore = create((set, get) => ({
     } catch {
       const patches = get().patches
       const prev = patches.updated[id] || {}
-      const nextPatches = {
+      const nextPatches: Patches = {
         ...patches,
         updated: { ...patches.updated, [id]: { ...prev, ...input } }
       }
@@ -229,7 +279,7 @@ export const useVehiclesStore = create((set, get) => ({
       get().pushToast('success', 'Машина удалена')
     } catch {
       const patches = get().patches
-      const nextPatches = {
+      const nextPatches: Patches = {
         ...patches,
         deleted: [...patches.deleted, id]
       }

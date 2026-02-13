@@ -9,7 +9,7 @@ import { buildTheme } from './theme'
 import 'leaflet/dist/leaflet.css'
 import './styles/leaflet.css'   // фиксы/переопределения для leaflet
 
-function getSavedTheme() {
+function getSavedTheme(): 'light' | 'dark' {
   const saved = localStorage.getItem('theme-mode')
   if (saved === 'light' || saved === 'dark') return saved
 
@@ -18,7 +18,7 @@ function getSavedTheme() {
 }
 
 function Root() {
-  const [mode, setMode] = useState(getSavedTheme())
+  const [mode, setMode] = useState<'light' | 'dark'>(getSavedTheme())
 
   useEffect(() => {
     localStorage.setItem('theme-mode', mode)

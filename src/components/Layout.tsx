@@ -15,7 +15,9 @@ import MapIcon from '@mui/icons-material/Map'
 import DarkModeRoundedIcon from '@mui/icons-material/DarkModeRounded'
 import LightModeRoundedIcon from '@mui/icons-material/LightModeRounded'
 
-function TopTab({ to, active, icon, label }) {
+type TopTabProps = { to: string; active: boolean; icon: React.ReactNode; label: string }
+
+function TopTab({ to, active, icon, label }: TopTabProps) {
   return (
     <Box
       component={NavLink}
@@ -45,7 +47,15 @@ function TopTab({ to, active, icon, label }) {
   )
 }
 
-export default function Layout({ children, mode, onToggleMode }) {
+export type ThemeMode = 'light' | 'dark'
+
+type LayoutProps = {
+  children: React.ReactNode
+  mode: ThemeMode
+  onToggleMode: () => void
+}
+
+export default function Layout({ children, mode, onToggleMode }: LayoutProps) {
   const { pathname } = useLocation()
 
   const isVehicles = pathname.startsWith('/vehicles')
