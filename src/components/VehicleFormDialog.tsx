@@ -55,13 +55,12 @@ type VehicleFormDialogProps =
 export default function VehicleFormDialog(props: VehicleFormDialogProps) {
   const { mode, open, onClose } = props
   const isEdit = mode === 'edit'
-  const initial = isEdit ? initial : undefined
-
+  const initial: Vehicle | undefined = isEdit ? props.initial : undefined
 
   const [showCoords, setShowCoords] = useState(false)
 
   const schema = isEdit ? EditSchema : CreateSchema
-  const resolver = useMemo(() => zodResolver(schema), [isEdit])
+  const resolver = useMemo(() => zodResolver(schema), [schema])
 
   const {
     register,
@@ -73,7 +72,7 @@ export default function VehicleFormDialog(props: VehicleFormDialogProps) {
   useEffect(() => {
     if (!open) return
 
-    if (isEdit) {
+    if (isEdit && initial) {
       reset({
         name: initial.name,
         price: initial.price
@@ -105,8 +104,8 @@ export default function VehicleFormDialog(props: VehicleFormDialogProps) {
         year: Number(data.year),
         color: data.color?.trim() || '',
         price: Number(data.price),
-        latitude: data.latitude ? Number(data.latitude) : undefined,
-        longitude: data.longitude ? Number(data.longitude) : undefined
+        latitude: data.latitude != null ? Number(data.latitude) : undefined,
+        longitude: data.longitude != null ? Number(data.longitude) : undefined
       })
     }
 
@@ -150,7 +149,7 @@ export default function VehicleFormDialog(props: VehicleFormDialogProps) {
                   label="Модель"
                   fullWidth
                   error={!!errors.model}
-                  helperText={errors.model?.message}
+                  helperText={(errors as any).model?.message}
                   {...register('model')}
                 />
               </Grid>
@@ -160,8 +159,8 @@ export default function VehicleFormDialog(props: VehicleFormDialogProps) {
                   label="Год"
                   fullWidth
                   type="number"
-                  error={!!errors.year}
-                  helperText={errors.year?.message}
+                  error={!!(errors as any).year}
+                  helperText={(errors as any).year?.message}
                   {...register('year')}
                 />
               </Grid>
@@ -170,8 +169,8 @@ export default function VehicleFormDialog(props: VehicleFormDialogProps) {
                 <TextField
                   label="Цвет"
                   fullWidth
-                  error={!!errors.color}
-                  helperText={errors.color?.message}
+                  error={!!(errors as any).color}
+                  helperText={(errors as any).color?.message}
                   {...register('color')}
                 />
               </Grid>
@@ -181,7 +180,7 @@ export default function VehicleFormDialog(props: VehicleFormDialogProps) {
                   control={
                     <Switch
                       checked={showCoords}
-                      onChange={e => setShowCoords(e.target.checked)}
+                      onChange={(e) => setShowCoords(e.target.checked)}
                     />
                   }
                   label="Указать координаты (необязательно)"
